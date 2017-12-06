@@ -1,0 +1,62 @@
+class callback:
+
+    def __init__(self, header, agent_setting):
+        self.header                    = header
+        self.callback_name             = agent_setting.get("callback_name",         agent_setting["agent_name"] + "_mon_callback")
+        self.cov_callback_name         = agent_setting.get("cov_callback_name",     agent_setting["agent_name"] + "_mon_cov_callback")
+        self.transaction_name          = agent_setting.get("transaction_name",      agent_setting["agent_name"] + "_tr")
+
+    def callback_gen(self):
+        fh = open(self.callback_name + ".sv", "w")
+        fh.write(self.header.replace("file_name", self.callback_name + ".sv"))
+        fh.write("`ifndef _%s_\n" % (self.callback_name.upper()))
+        fh.write("`define _%s_\n" % (self.callback_name.upper()))
+        fh.write("\n")
+        fh.write("virtual class %s extends uvm_callback;\n" % (self.callback_name))
+        fh.write("\n")
+        fh.write("  //--------------------------------------------------\n")
+        fh.write("  //function: new\n")
+        fh.write("  //--------------------------------------------------\n")
+        fh.write("  function new(string name = \"%s\");\n" % (self.callback_name))
+        fh.write("    super.new(name);\n")
+        fh.write("  endfunction: new\n")
+        fh.write("\n")
+        fh.write("  //--------------------------------------------------\n")
+        fh.write("  //task: transaction_received\n")
+        fh.write("  //--------------------------------------------------\n")
+        fh.write("  virtual task transaction_received(%s tr);\n" % (self.transaction_name))
+        fh.write("  endtask: transaction_received\n")
+        fh.write("\n")
+        fh.write("endclass: %s\n" % (self.callback_name))
+        fh.write("\n")
+        fh.write("`endif //_%s_\n" % (self.callback_name.upper()))
+        fh.close()
+
+
+    def cov_callback_gen(self):
+        fh = open(self.cov_callback_name + ".sv", "w")
+        fh.write(self.header.replace("file_name", self.cov_callback_name + ".sv"))
+        fh.write("`ifndef _%s_\n" % (self.cov_callback_name.upper()))
+        fh.write("`define _%s_\n" % (self.cov_callback_name.upper()))
+        fh.write("\n")
+        fh.write("class %s extends %s;\n" % (self.cov_callback_name, self.callback_name))
+        fh.write("  `uvm_object_utils(%s)\n" % (self.cov_callback_name))
+        fh.write("\n")
+        fh.write("  //--------------------------------------------------\n")
+        fh.write("  //function: new\n")
+        fh.write("  //--------------------------------------------------\n")
+        fh.write("  function new(string name = \"%s\");\n" % (self.cov_callback_name))
+        fh.write("  endfunction: new\n")
+        fh.write("\n")
+        fh.write("  //--------------------------------------------------\n")
+        fh.write("  //task: transaction_received\n")
+        fh.write("  //--------------------------------------------------\n")
+        fh.write("  virtual task transaction_received(%s tr);\n" % (self.transaction_name))
+        fh.write("  endtask: transaction_received\n")
+        fh.write("\n")
+        fh.write("endclass: %s\n" % (self.cov_callback_name))
+        fh.write("\n")
+        fh.write("`endif //_%s_\n" % (self.cov_callback_name.upper()))
+        fh.close()
+
+

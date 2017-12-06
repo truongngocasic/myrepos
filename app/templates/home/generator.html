@@ -1,0 +1,579 @@
+{% extends "base.html" %}
+{% block body %}
+    <script>
+        var uvm_env   = { "project_name" : "", "header" : "", "clock" : "clk", "reset" : "resetn", "testbench" : "testbench_top", "agent" : {} };
+        var agent_text_id = ["agent1_text"];
+        var default_header    = '\
+//--------------------------------------------------------------------------------\n\
+// Project     : project_name\n\
+//----------------------------------------------------------\n\
+// File name   : file_name\n\
+// Date        : $Date: $\n\
+// Revision    : $Revision: $\n\
+// Author      : $Author: $\n\
+//----------------------------------------------------------\n\
+// CM Engineering Vietnam Co., Ltd.\n\
+//--------------------------------------------------------------------------------\n\
+';
+        var header_prj = '\
+//--------------------------------------------------------------------------------\n\
+// Project     : project_name\n\
+//----------------------------------------------------------\n\
+';
+        var header_com = '\
+//----------------------------------------------------------\n\
+// CM Engineering Vietnam Co., Ltd.\n\
+//--------------------------------------------------------------------------------\n\
+';
+
+        function get_header() {
+            var f_header = "";
+            if($("input[name='cfg_header']").is(':checked')) {
+                <!--f_header = header_prj.replace(/project_name/, $("input[name='cfg_project_name']").val());-->
+                <!--f_header = f_header + $("textarea[name='cfg_my_header']").val() + '\n';-->
+                <!--f_header = f_header + header_com;-->
+                f_header = $("textarea[name='cfg_my_header']").val() + '\n';
+            }
+            else
+                f_header = default_header.replace(/project_name/, $("input[name='cfg_project_name']").val());
+
+            return f_header;
+        }
+
+        function show_project(myResp) {
+            /* project_name */
+            $("input[name='cfg_project_name']").val(myResp.project_name);
+            /* header */
+            f_header = default_header.replace(/project_name/, myResp.project_name);
+            if (f_header == myResp.header) {
+                $("input[name='cfg_header']").prop('checked', false);
+                $("textarea[name='cfg_my_header']").hide();  
+            }
+            else {
+                $("textarea[name='cfg_my_header']").val(myResp.header);
+                $("input[name='cfg_header']").prop('checked', true);
+                $("textarea[name='cfg_my_header']").show();  
+            }
+            /* agent */
+            var agents = JSON.parse(myResp.agent);
+            uvm_env.agent = agents;
+
+            $(".cl_agent").css("fill", "#f1f1f1");         /* change color to gray*/
+            $(".cl_agent_text").text("agent");             /* clear instance name to "agent" */
+            for (var agent in agents) {
+                $("#" + agent).css("fill", "#ffbf00");     /* change color to orange */
+                $("#" + agent + "_text").text(agents[agent]["instance_name"]);
+            }
+            $("#agent_message").hide();             /* hide agent_message if any */
+            $("#cfg_message").hide();               /* hide cfg_message if any */
+            $("#div_env_download").hide();          /* hide div_env_download if any */
+        }
+
+        $(document).ready(function() {
+            /* User click on "Use my header" checkbox */
+            $("input[name='cfg_header']").click(function(){
+                if($(this).is(':checked'))
+                    $("textarea[name='cfg_my_header']").show();  
+                else
+                    $("textarea[name='cfg_my_header']").hide();  
+            });
+            
+            /* User click on "Header preview" button */
+            $("#cfg_header_preview").click(function(){
+                alert(get_header());
+            });
+            
+            /* User click on agent: change class, add id */
+            $(".cl_agent").click(function(){
+                $(".cl_agent").css("stroke", "#000000");
+                $(".cl_agent").css("stroke-width", "1");
+                $(".cl_agent").css("stroke-dasharray", "3 3");
+                $(this).css("stroke", "red");
+                $(this).css("stroke-width", "2");
+                $(this).css("stroke-dasharray", "none");
+                $("input[name='agent_id']").val(this.id);
+                $("#agent_message").hide();                     /* hide agent_message if any */
+
+                /* fill agent config if any */
+                if(uvm_env["agent"][this.id]) {
+                    $("input[name='agent_name']").val(uvm_env["agent"][this.id]["agent_name"]);
+                    $("input[name='instance_name']").val(uvm_env["agent"][this.id]["instance_name"]);
+                    $("input[name='instance_num']").val(uvm_env["agent"][this.id]["instance_num"]);
+                    $("select[name='agent_type']").val(uvm_env["agent"][this.id]["agent_type"]);
+                    $("select[name='agent_active']").val(uvm_env["agent"][this.id]["agent_active"]);
+                }
+                else {
+                    $("input[name='agent_name']").val("");
+                    $("input[name='instance_name']").val("");
+                    $("input[name='instance_num']").val("");
+                    $("select[name='agent_type']").val("Master");
+                    $("select[name='agent_active']").val("Active");
+                }
+            });
+            
+            /* User click done button on agent_setting */
+            $("#btn_agent_done").click(function(){
+                var message = "";
+                var id=$("input[name='agent_id']").val();
+                var chk;
+                var reWhiteSpace = new RegExp(/\s/);
+                var agent_cfg = { "agent_name":"","instance_name":"","instance_num":"","agent_type":"","agent_active":"" };
+                var ins_name = "";
+
+                /* Checking */
+                chk = $("input[name='agent_name']").val();
+                if(chk.length < 1) message = message + "<strong>Agent name</strong> should not empty<br/>";
+                if(reWhiteSpace.test(chk)) message = message + "<strong>Agent name</strong> should not has space<br/>";
+
+                chk = $("input[name='instance_name']").val();
+                if(chk.length < 1) message = message + "<strong>Instance name</strong> should not empty<br/>";
+                if(reWhiteSpace.test(chk)) message = message + "<strong>Instance name</strong> should not has space<br/>";
+
+                chk = $("input[name='instance_num']").val();
+                if(chk.length < 1) message = message + "<strong>Number of instance</strong> should not empty<br/>";
+
+                for (var key in uvm_env["agent"]) {
+                    ins_name = $("input[name='instance_name']").val();
+                    if (ins_name == uvm_env["agent"][key]["instance_name"]) {
+                        message = message + "Instance_name: '" + ins_name + "' is used. Please choose another name<br/>";
+                    }
+                }
+                /* Done */
+                if(message === "") {
+                    agent_cfg["agent_name"]   = ($("input[name='agent_name']").val());
+                    agent_cfg["instance_name"]= ($("input[name='instance_name']").val());
+                    agent_cfg["instance_num"] = ($("input[name='instance_num']").val());
+                    agent_cfg["agent_type"]   = ($("select[name='agent_type']").find(":selected").val());
+                    agent_cfg["agent_active"] = ($("select[name='agent_active']").find(":selected").val());
+                    $("#" + id).css("fill", "#ffbf00");     /* change color to orange */
+                    uvm_env["agent"][id] = agent_cfg;
+                    $("#" + id + "_text").text(agent_cfg["instance_name"]);
+                    $("#agent_message").hide();
+                }
+                else {
+                    $("#agent_message").html(message);
+                    $("#agent_message").show();
+                }
+            });
+
+            /* User click delete button on agent_setting*/
+            $("#btn_agent_delete").click(function(){
+                var id=$("input[name='agent_id']").val();
+                $("#" + id).css("fill", "#f1f1f1");     /* change color to gray*/
+                uvm_env["agent"][id] = "";
+                $("#agent_message").hide();             /* hide agent_message if any */
+                $("#" + id + "_text").text("agent");
+            });
+
+            /* User click generate button */
+            $("#btn_env_generate").click(function(){
+                var project_name = $("input[name='cfg_project_name']").val();
+                var chk;
+                var message = "";
+                var reWhiteSpace = new RegExp(/\s/);
+
+                chk = $("input[name='cfg_project_name']").val();
+                if(chk.length < 1) message = message + "<strong>Project name</strong> should not empty<br/>";
+                if(reWhiteSpace.test(chk)) message = message + "<strong>Project name</strong> should not has space<br/>";
+
+                if(message === "") {
+                    uvm_env["project_name"] = project_name; 
+                    uvm_env["header"] = get_header(); 
+                    $.ajax({
+                        type: "POST",
+                        url: "{{ url_for('home.env_gen') }}",
+                        data: JSON.stringify(uvm_env),
+                        contentType: "application/json; charset=utf-8",
+                        success: function(response, textStatus){
+                            $("#btn_env_download").attr("href", "download/" + response);
+                            $("#div_env_download").show();
+                        },
+                        error: function(response, textStatus, errorThrown) {
+                            console.log("error:" + textStatus + " " + errorThrown);
+                        }
+                    });
+                    $("#cfg_message").hide();
+                }
+                else {
+                    $("#cfg_message").html(message);
+                    $("#cfg_message").show();
+                }
+            });
+
+            /* User click load_project */
+            $("a.load_project").click(function(){
+                $.ajax({
+                    type: "POST",
+                    url: $(this).attr("href"),
+                    contentType: "application/json; charset=utf-8",
+                    success: function(response, textStatus){
+                        myResp = JSON.parse(response);
+                        show_project(myResp);
+                    },
+                    error: function(response, textStatus, errorThrown) {
+                        console.log("error:" + textStatus + " " + errorThrown);
+                    }
+                });
+                return false;
+
+            });
+        });
+
+  </script>
+  <style>
+    /* Set height of the grid so .sidenav can be 100% (adjust if needed) */
+    .row.content {height: 1500px}
+    
+    /* Set gray background color and 100% height */
+    .sidenav {
+      background-color: #f1f1f1;
+      height: 100%;
+    }
+    
+    /* Set style for environment components, agents */
+    .cl_env_duv {
+      fill: #dae8fc;
+      stroke: #6c8ebf;
+    }
+
+    .cl_env_other {
+      fill: #ffffff;
+      stroke: #000000;
+      stroke-width: 1;
+    }
+
+    .cl_agent{
+      fill: #f1f1f1;
+      stroke: #000000;
+      stroke-dasharray: 3 3;
+    }
+  </style>
+
+<div class="container-fluid">
+  <div class="row content">
+	<!-- ENVIRONMENT STRUCTURE -->
+    <div class="col-sm-6 sidenav" >
+		<!-- environment diagram -->
+        <div class="row" style="text-align:center;">
+          	<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="631px" height="582px" version="1.1" ><defs/>
+    		<g transform="translate(0.5,0.5)">
+    			<rect class="cl_env_duv" id="DUV" x="160" y="285" width="310" height="190" rx="28.5" ry="28.5" pointer-events="none"/>
+    			<g transform="translate(302.5,373.5)">
+    				<switch>
+    					<foreignObject style="overflow:visible;" pointer-events="all" width="25" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+    						<div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 27px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">DUV</div></div>
+    					</foreignObject>
+    					<text x="13" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">DUV</text>
+    				</switch>
+    			</g>
+    			<path d="M 97.88 305.07 L 153.36 305.07" fill="none" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 90.88 305.07 L 97.88 301.57 L 97.88 308.57 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 160.36 305.07 L 153.36 308.57 L 153.36 301.57 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 22.17 276.95 L 22.17 209.74" fill="none" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 22.17 283.95 L 18.67 276.95 L 25.67 276.95 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 22.17 202.74 L 25.67 209.74 L 18.67 209.74 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 67.69 276.95 L 67.69 240.24 L 261.64 240.24" fill="none" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 67.69 283.95 L 64.19 276.95 L 71.19 276.95 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 268.64 240.24 L 261.64 243.74 L 261.64 236.74 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			
+    			<rect class="cl_agent" id="agent1" x="0" y="285" width="90" height="40" rx="6" ry="6" style="cursor:pointer"/>
+    			<g transform="translate(0,298.5)">
+    				<switch>
+    					<foreignObject style="overflow:visible;" pointer-events="all" width="90" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+    						<div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 90px; white-space: nowrap; word-wrap: normal; text-align: center;"><div class="cl_agent_text" id="agent1_text" xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">agent</div></div>
+    					</foreignObject>
+    					<text x="16" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">agent</text>
+    				</switch>
+    			</g>
+    
+    			
+    			<path d="M 97.88 354.72 L 149.92 354.72" fill="none" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 90.88 354.72 L 97.88 351.22 L 97.88 358.22 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 156.92 354.72 L 149.92 358.22 L 149.92 351.22 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			
+    			<rect class="cl_agent" id="agent2" x="0" y="335" width="90" height="40" rx="6" ry="6" style="cursor:pointer"/>
+    			<g transform="translate(0,348.5)">
+    				<switch>
+    					<foreignObject style="overflow:visible;" pointer-events="all" width="90" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+    						<div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 90px; white-space: nowrap; word-wrap: normal; text-align: center;"><div class="cl_agent_text" id="agent2_text" xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">agent</div></div>
+    					</foreignObject>
+    					<text x="16" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">agent</text>
+    				</switch>
+    			</g>
+    			
+    			<path d="M 97.88 405.07 L 151.99 405.07" fill="none" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 90.88 405.07 L 97.88 401.57 L 97.88 408.57 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 158.99 405.07 L 151.99 408.57 L 151.99 401.57 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			
+    			<rect class="cl_agent" id="agent3" x="0" y="385" width="90" height="40" rx="6" ry="6" style="cursor:pointer"/>
+    			<g transform="translate(0,398.5)">
+    				<switch>
+    					<foreignObject style="overflow:visible;" pointer-events="all" width="90" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+    						<div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 90px; white-space: nowrap; word-wrap: normal; text-align: center;"><div class="cl_agent_text" id="agent3_text" xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">agent</div></div>
+    					</foreignObject>
+    					<text x="16" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">agent</text>
+    				</switch>
+    			</g>
+    			
+    			<path d="M 97.88 454.72 L 151.99 454.72" fill="none" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 90.88 454.72 L 97.88 451.22 L 97.88 458.22 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 158.99 454.72 L 151.99 458.22 L 151.99 451.22 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			
+    			<rect class="cl_agent" id="agent4" x="0" y="435" width="90" height="40" rx="6" ry="6" style="cursor:pointer"/>
+    			<g transform="translate(0,448.5)">
+    				<switch>
+    					<foreignObject style="overflow:visible;" pointer-events="all" width="90" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+    						<div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 90px; white-space: nowrap; word-wrap: normal; text-align: center;"><div class="cl_agent_text" id="agent4_text" xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">agent</div></div>
+    					</foreignObject>
+    					<text x="16" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">agent</text>
+    				</switch>
+    			</g>
+    			
+    			<path d="M 531.99 305.07 L 476.5 305.07" fill="none" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 538.99 305.07 L 531.99 308.57 L 531.99 301.57 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 469.5 305.07 L 476.5 301.57 L 476.5 308.57 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 607.69 276.95 L 607.69 210.43" fill="none" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 607.69 283.95 L 604.19 276.95 L 611.19 276.95 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 607.69 203.43 L 611.19 210.43 L 604.19 210.43 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 562.17 276.95 L 562.17 240.24 L 368.22 240.24" fill="none" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 562.17 283.95 L 558.67 276.95 L 565.67 276.95 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 361.22 240.24 L 368.22 236.74 L 368.22 243.74 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			
+    			<rect class="cl_agent" id="agent5" x="540" y="285" width="90" height="40" rx="6" ry="6" style="cursor:pointer"/>
+    			<g transform="translate(540,298.5)">
+    				<switch>
+    					<foreignObject style="overflow:visible;" pointer-events="all" width="90" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+    						<div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 90px; white-space: nowrap; word-wrap: normal; text-align: center;"><div class="cl_agent_text" id="agent5_text" xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">agent</div></div>
+    					</foreignObject>
+    					<text x="16" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">agent</text>
+    				</switch>
+    			</g>
+    			
+    			<path d="M 531.99 354.72 L 479.26 354.72" fill="none" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 538.99 354.72 L 531.99 358.22 L 531.99 351.22 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 472.26 354.72 L 479.26 351.22 L 479.26 358.22 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			
+    			<rect class="cl_agent" id="agent6" x="540" y="335" width="90" height="40" rx="6" ry="6" style="cursor:pointer"/>
+    			<g transform="translate(540,348.5)">
+    				<switch>
+    					<foreignObject style="overflow:visible;" pointer-events="all" width="90" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+    						<div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 90px; white-space: nowrap; word-wrap: normal; text-align: center;"><div class="cl_agent_text" id="agent6_text" xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">agent</div></div>
+    					</foreignObject>
+    					<text x="16" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">agent</text>
+    				</switch>
+    			</g>
+    			
+    			<path d="M 531.99 405.07 L 477.88 405.07" fill="none" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 538.99 405.07 L 531.99 408.57 L 531.99 401.57 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 470.88 405.07 L 477.88 401.57 L 477.88 408.57 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			
+    			<rect class="cl_agent" id="agent7" x="540" y="385" width="90" height="40" rx="6" ry="6" style="cursor:pointer"/>
+    			<g transform="translate(540,398.5)">
+    				<switch>
+    					<foreignObject style="overflow:visible;" pointer-events="all" width="90" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+    						<div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 90px; white-space: nowrap; word-wrap: normal; text-align: center;"><div class="cl_agent_text" id="agent7_text" xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">agent</div></div>
+    					</foreignObject>
+    					<text x="16" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">agent</text>
+    				</switch>
+    			</g>
+    			
+    			<path d="M 531.99 454.72 L 478.57 454.72" fill="none" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 538.99 454.72 L 531.99 458.22 L 531.99 451.22 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 471.57 454.72 L 478.57 451.22 L 478.57 458.22 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			
+    			<rect class="cl_agent" id="agent8" x="540" y="435" width="90" height="40" rx="6" ry="6" style="cursor:pointer"/>
+    			<g transform="translate(540,448.5)">
+    				<switch>
+    					<foreignObject style="overflow:visible;" pointer-events="all" width="90" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+    						<div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 90px; white-space: nowrap; word-wrap: normal; text-align: center;"><div class="cl_agent_text" id="agent8_text" xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">agent</div></div>
+    					</foreignObject>
+    					<text x="16" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">agent</text>
+    				</switch>
+    			</g>
+    			
+    			<rect class="cl_env_other" id="vir_sequencer" x="0" y="160" width="630" height="40" rx="6" ry="6" pointer-events="none"/>
+    			<g transform="translate(269.5,173.5)">
+    				<switch>
+    					<foreignObject style="overflow:visible;" pointer-events="all" width="91" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+    						<div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 93px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">virtual sequencer</div></div>
+    					</foreignObject>
+    					<text x="46" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">virtual sequencer</text>
+    				</switch>
+    			</g>
+    			<path d="M 315.28 128.36 L 315.28 140.24 L 315.28 152.12" fill="none" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 315.28 121.36 L 318.78 128.36 L 311.78 128.36 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 315.28 159.12 L 311.78 152.12 L 318.78 152.12 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<rect class="cl_env_other" id="vir_sequence" x="0" y="80" width="630" height="40" rx="6" ry="6" pointer-events="none"/>
+    			<g transform="translate(271.5,93.5)">
+    				<switch>
+    					<foreignObject style="overflow:visible;" pointer-events="all" width="87" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+    						<div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 89px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">virtual sequence</div></div>
+    					</foreignObject>
+    					<text x="44" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">virtual sequence</text>
+    				</switch>
+    			</g>
+    			<path d="M 204.93 532.12 L 204.93 484.91" fill="none" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 204.93 539.12 L 201.43 532.12 L 208.43 532.12 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 204.93 477.91 L 208.43 484.91 L 201.43 484.91 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			
+    			<rect class="cl_agent" id="agent9" x="160" y="540" width="90" height="40" rx="6" ry="6" style="cursor:pointer"/>
+    			<g transform="translate(160,553.5)">
+    				<switch>
+    					<foreignObject style="overflow:visible;" pointer-events="all" width="90" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+    						<div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 90px; white-space: nowrap; word-wrap: normal; text-align: center;"><div class="cl_agent_text" id="agent9_text" xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">agent</div></div>
+    					</foreignObject>
+    					<text x="16" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">agent</text>
+    				</switch>
+    			</g>
+    			
+    			<path d="M 315.28 532.12 L 315.28 482.84" fill="none" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 315.28 539.12 L 311.78 532.12 L 318.78 532.12 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 315.28 475.84 L 318.78 482.84 L 311.78 482.84 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			
+    			<rect class="cl_agent" id="agent10" x="270" y="540" width="90" height="40" rx="6" ry="6" style="cursor:pointer"/>
+    			<g transform="translate(270,553.5)">
+    				<switch>
+    					<foreignObject style="overflow:visible;" pointer-events="all" width="90" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+    						<div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 90px; white-space: nowrap; word-wrap: normal; text-align: center;"><div class="cl_agent_text" id="agent10_text" xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">agent</div></div>
+    					</foreignObject>
+    					<text x="16" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">agent</text>
+    				</switch>
+    			</g>
+    			
+    			<path d="M 424.93 532.12 L 424.93 482.84" fill="none" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 424.93 539.12 L 421.43 532.12 L 428.43 532.12 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 424.93 475.84 L 428.43 482.84 L 421.43 482.84 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			
+    			<rect class="cl_agent" id="agent11" x="380" y="540" width="90" height="40" rx="6" ry="6" style="cursor:pointer"/>
+    			<g transform="translate(380,553.5)">
+    				<switch>
+    					<foreignObject style="overflow:visible;" pointer-events="all" width="90" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+    						<div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 90px; white-space: nowrap; word-wrap: normal; text-align: center;"><div class="cl_agent_text" id="agent11_text" xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">agent</div></div>
+    					</foreignObject>
+    					<text x="16" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">agent</text>
+    				</switch>
+    			</g>
+    			
+    			<path d="M 315.28 44.91 L 315.28 72.12" fill="none" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 315.28 37.91 L 318.78 44.91 L 311.78 44.91 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<path d="M 315.28 79.12 L 311.78 72.12 L 318.78 72.12 Z" fill="#000000" stroke="#000000" stroke-miterlimit="10" pointer-events="none"/>
+    			<rect class="cl_env_other" id="scenario" x="0" y="0" width="630" height="37" rx="5.55" ry="5.55" pointer-events="none"/>
+    			<g transform="translate(258.5,12.5)">
+    				<switch>
+    					<foreignObject style="overflow:visible;" pointer-events="all" width="113" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+    						<div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 113px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">verification scenarios</div></div>
+    					</foreignObject>
+    					<text x="57" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">verification scenarios</text>
+    				</switch>
+    			</g>
+    			<rect class="cl_env_other" id="scoreboard" x="270" y="220" width="90" height="40" rx="6" ry="6" pointer-events="none"/>
+    			<g transform="translate(284.5,233.5)">
+    				<switch>
+    					<foreignObject style="overflow:visible;" pointer-events="all" width="61" height="12" requiredFeatures="http://www.w3.org/TR/SVG11/feature#Extensibility">
+    						<div xmlns="http://www.w3.org/1999/xhtml" style="display: inline-block; font-size: 12px; font-family: Helvetica; color: rgb(0, 0, 0); line-height: 1.2; vertical-align: top; width: 61px; white-space: nowrap; word-wrap: normal; text-align: center;"><div xmlns="http://www.w3.org/1999/xhtml" style="display:inline-block;text-align:inherit;text-decoration:inherit;">scoreboard</div></div>
+    					</foreignObject>
+    					<text x="31" y="12" fill="#000000" text-anchor="middle" font-size="12px" font-family="Helvetica">scoreboard</text>
+    				</switch>
+    			</g>
+    		</g>
+    		</svg>
+        </div>
+		<!-- Generate button -->
+        <div class="row">
+            <div class="col-sm-9 text-right" style="padding: 10px">
+		        <button id="btn_env_generate" type="button" class="btn btn-success"><span class="glyphicon glyphicon-print"></span> Generate </button>
+            </div>
+            <div class="col-sm-3 text-left" id="div_env_download" style="padding: 10px" hidden>
+                <a id="btn_env_download" href="" class="btn btn-info"><span class="glyphicon glyphicon-download-alt"></span> Download </a>
+            </div>
+        </div>
+
+    </div>
+
+	<!-- SETTING -->
+    <div class="col-sm-6">
+		<!-- Header configuration -->
+		<h4>CONFIGURATION</h4>
+		<form class="form-horizontal">
+			<div class="form-group">
+				<label class="col-sm-2 control-label">Project name</label>
+				<div class="col-sm-10">
+					<input name="cfg_project_name" type="text" class="form-control" placeholder="Project name">
+				</div>
+			</div>
+			<div class="form-group">
+				<div class="col-sm-offset-2 col-sm-10">
+				<div class="checkbox">
+					<input name="cfg_header" type="checkbox">Use my header
+				</div>
+				</div>
+			</div>
+			<div class="form-group">
+				<label class="col-sm-2 control-label"></label>
+				<div class="col-sm-10">
+					<textarea name="cfg_my_header" class="form-control" row=5 placeholder="My header" style="display:none"></textarea>
+				</div>
+			</div>
+			<div class="form-group">
+				<div class="col-sm-offset-2 col-sm-10">
+				    <button id="cfg_header_preview" type="button" class="btn btn-success">Header preview</button>
+				</div>
+			</div>
+		</form>
+		<div class="alert alert-warning" id="cfg_message" hidden></div>
+		<!-- Agent setting -->
+		<div id="agent_setting" >
+			<hr>
+			<h4>Agent setting:</h4>
+			<form class="form-horizontal">
+				<div class="form-group">
+					<label class="col-sm-2 control-label">Agent name</label>
+					<div class="col-sm-10">
+						<input name="agent_name" type="text" class="form-control" placeholder="Agent name" required>
+					</div>
+				</div>
+				<div class="form-group">
+					<label class="col-sm-2 control-label">Instance name</label>
+					<div class="col-sm-10">
+						<input name="instance_name" type="text" class="form-control" placeholder="Instance name" required>
+					</div>
+				</div>
+				<div class="form-group">
+					<label class="col-sm-2 control-label">Number of instance</label>
+					<div class="col-sm-10">
+						<input name="instance_num" type="text" class="form-control" placeholder="Number of instance" oninput="this.value = this.value.replace(/[^0-9]/, '')" required>
+					</div>
+				</div>
+				<div class="form-group">
+					<label class="col-sm-2 control-label">Type</label>
+					<div class="col-sm-10">
+						<select class="form-control" name="agent_type">
+							<option value="Master" selected="selected">Master</option>
+							<option value="Slave">Slave</option>
+						</select>
+					</div>
+				</div>
+				<div class="form-group">
+					<label class="col-sm-2 control-label">Active</label>
+					<div class="col-sm-10">
+						<select class="form-control" name="agent_active">
+							<option value="Active" selected="selected">Active</option>
+							<option value="Passive">Passive</option>
+						</select>
+					</div>
+				</div>
+				<input name="agent_id" type="hidden">
+				<div class="form-group">
+					<div class="col-sm-offset-2 col-sm-10">
+					<button id="btn_agent_done" type="button" class="btn btn-success">Done</button>
+					<button id="btn_agent_delete" type="button" class="btn btn-danger">Delete</button>
+					</div>
+				</div>
+			</form>
+			<div class="alert alert-warning" id="agent_message" hidden></div>
+		</div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

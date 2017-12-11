@@ -2,13 +2,14 @@ from flask import abort, render_template, request, send_file, flash
 from flask_login import current_user, login_required
 
 from . import home
-from ..uvm_gen import gen_env
 import shutil
 import uuid
 import os
 import json
+import sys
 from ..models import User, Project
 from .. import db
+from ..uvm_gen import gen_env
 
 basedir = os.path.abspath(os.path.dirname(__file__))
 

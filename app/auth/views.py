@@ -1,8 +1,8 @@
 from flask import flash, redirect, render_template, url_for
-from flask_login import login_required, login_user, logout_user
+from flask_login import login_required, login_user, logout_user, current_user
 
 from . import auth
-from forms import LoginForm, RegistrationForm
+from forms import LoginForm, RegistrationForm, ChangePasswordForm
 from .. import db
 from ..models import User 
 
@@ -62,3 +62,29 @@ def logout():
 
     # redirect to the login page
     return redirect(url_for('auth.login'))
+
+
+@auth.route('/change_password', methods=['GET', 'POST'])
+@login_required
+def change_password():
+    """
+    Handle requests to the /resetpassword route
+    """
+    form = ChangePasswordForm()
+    if form.validate_on_submit():
+
+        # check whether employee exists in the database and whether
+        # the password entered matches the password in the database
+        if current_user.verify_password(form.curpassword.data):
+            current_user.password = form.newpassword.data
+            db.session.add(current_user)
+            db.session.commit()
+            flash('Changed password.')
+        # when login details are incorrect
+        else:
+            flash('Invalid current password.')
+
+    # load login template
+    return render_template('auth/change_password.html', form=form, title='Change Password')
+
+

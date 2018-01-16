@@ -16,21 +16,21 @@
                       <li><a href="{{ url_for('home.admin_dashboard') }}">Dashboard</a></li>
                       <li><a href="{{ url_for('admin.list_users') }}">Users</a></li>
                     {% else %}
-                      {% if projects %}
-                        <li class="dropdown">
-                          <a class="dropdown-toggle" data-toggle="dropdown" href="#">Generator <span class="caret"></span></a>
-                          <ul class="dropdown-menu">
-                            {% for project in projects %}
-                            <li><a class="load_project" href="{{ url_for('home.load_project', id=project.id) }}">{{ project.name }}</a></li>
-                            {% endfor %}
-                          </ul>
-                        </li>
-                      {% else %}
-                        <li><a href="{{ url_for('home.generator') }}">Generator</a></li>
-                      {% endif %}
+                      <li><a href="{{ url_for('home.generator') }}">Generator</a></li>
                     {% endif %}
+                    <li class="dropdown">
+                      <a class="dropdown-toggle" data-toggle="dropdown" href="#"><i class="fa fa-user"></i>Hi, {{ current_user.username }}!<span class="caret"></span></a>
+                      <ul class="dropdown-menu">
+                        <li><a href="{{ url_for('auth.change_password') }}">Change password</a></li>
+                        {% if projects %}
+                          <li class="divider"></li>
+                          {% for project in projects %}
+                            <li><a class="load_project" href="{{ url_for('home.load_project', id=project.id) }}">{{ project.name }}</a></li>
+                          {% endfor %}
+                        {% endif %}
+                      </ul>
+                    </li>
                     <li><a href="{{ url_for('auth.logout') }}">Logout</a></li>
-                    <li><a><i class="fa fa-user"></i>  Hi, {{ current_user.username }}!</a></li>
                   {% else %}
                     <li><a href="{{ url_for('home.homepage') }}">Home</a></li>
                     <li><a href="{{ url_for('auth.register') }}">Register</a></li>

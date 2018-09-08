@@ -18,11 +18,17 @@ class environment:
         environment_build   = ""
         environment_connect = ""
         
-        environment_declare = environment_declare + "  virtual %-42s env_if;\n" % (self.interface_name)
-        environment_declare = environment_declare + "  %-50s env_cfg;\n" % (self.config_name)
-        environment_declare = environment_declare + "  %-50s env_sb;\n" % (self.scoreboard_name)
-        environment_declare = environment_declare + "  %-50s env_cov;\n" % (self.coverage_name)
-        environment_declare = environment_declare + "  %-50s vir_seqr;\n" % (self.virtual_sequencer_name)
+        environment_declare = environment_declare + "  //Environment interface\n"
+        environment_declare = environment_declare + "  virtual %-42s env_if;\n\n" % (self.interface_name)
+        environment_declare = environment_declare + "  //Environment config\n"
+        environment_declare = environment_declare + "  %-50s env_cfg;\n\n" % (self.config_name)
+        environment_declare = environment_declare + "  //Environment scoreboard\n"
+        environment_declare = environment_declare + "  %-50s env_sb;\n\n" % (self.scoreboard_name)
+        environment_declare = environment_declare + "  //Environment coverage\n"
+        environment_declare = environment_declare + "  %-50s env_cov;\n\n" % (self.coverage_name)
+        environment_declare = environment_declare + "  //Virtual sequencer\n"
+        environment_declare = environment_declare + "  %-50s vir_seqr;\n\n" % (self.virtual_sequencer_name)
+        environment_declare = environment_declare + "  //Agents\n"
         #environment_build   = environment_build   + "    env_cfg = new();\n"
         environment_build   = environment_build   + "    env_sb = %s::type_id::create(\"env_sb\", this);\n" % (self.scoreboard_name)
         environment_build   = environment_build   + "    env_cov = %s::type_id::create(\"env_cov\", this);\n" % (self.coverage_name)
